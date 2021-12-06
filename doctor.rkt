@@ -64,7 +64,7 @@
                                 (why do you feel that way about yuor * ?)
                                 )
                                )
-                              ( ; group 3
+                              ( ; группа 3
                                (university scheme lections motivation)
                                (
                                 (your education is important)
@@ -74,20 +74,20 @@
                                 (what is your main problem with * ?)
                                 )
                                )
-                              ( ; group 4
+                              ( ; группа 4
                                (diet fat weight bulimia anorexia thinness food)
-                              (
-                               (how often do you have problems with eating?)
-                               (does anybody else know about that?)
-                               (you should count the number of calories you eat)
-                               ))
-                              ( ; group 5
+                               (
+                                (how often do you have problems with eating?)
+                                (does anybody else know about that?)
+                                (you should count the number of calories you eat)
+                                ))
+                              ( ; группа 5
                                (nightmare sleep loneliness fear terror dread)
-                              (
-                               (how often do you have problems with dreaming?)
-                                       (did you have the same problems in your childhood ?)
-                                       (is your bed comfortable enough ?))
-                              )))
+                               (
+                                (how often do you have problems with dreaming?)
+                                (did you have the same problems in your childhood ?)
+                                (is your bed comfortable enough ?))
+                               )))
 
 ; упражнение 6
 (define (visit-doctor-v3 stop-word patient-max)
@@ -150,8 +150,8 @@
 ; упражнение 6
 ; есть ли в фразе слово, которое есть в списке ключевых
 (define (check-for-keywords phrase)
-(ormap (lambda (x) (member x all-keywords)) phrase)
-)
+  (ormap (lambda (x) (member x all-keywords)) phrase)
+  )
 
 
 ; упражнение 6
@@ -159,7 +159,7 @@
   ; returns list of all keywords of phrase and its length (lenght <keywords>)
   (define get-all-keywords
     (foldl (lambda (curr res) (if (member curr all-keywords) (cons (+ 1 (car res)) (cons curr (cdr res))) res))
-         (cons 0 `()) phrase)
+           (cons 0 `()) phrase)
     )
 
 
@@ -178,7 +178,7 @@
       )
     )
 
-  ; gets random answer from all possible
+  ; выбор рандомного ответа из возможных
   (define (get-answer-by-keyword keyword)
     (pick-random-list (get-possible-answers-by-keyword keyword))
     )
@@ -221,8 +221,9 @@
       (cond
         ((equal? user-response '(goodbye)) ; реплика '(goodbye) служит для выхода из цикла
          (printf "Goodbye, ~a!\n" name)
-         (print '(see you next week)))
-        (else (print (reply-ex7 user-response doctor-memory)) ; иначе Доктор генерирует ответ, печатает его и продолжает цикл
+         (print '(see you next week))
+         (newline))
+        (else (print (reply-ex7 user-response doctor-memory strategies_structure)) ; иначе Доктор генерирует ответ, печатает его и продолжает цикл
               (loop (vector-append (vector user-response) doctor-memory))
               )
         )
@@ -230,16 +231,72 @@
     )
   )
 
+; функция предик о применимости стратегии, вес стратегии, тело стратегии (функция)
+; pick-random-with-weight
 
-(define (reply-ex7 user-response doctor-memory)
-  (case (random 4)
-    ((0) (qualifier-answer user-response))
-    ((1) (hedge))
-    ((2) (if (vector-empty? doctor-memory) (reply hedge) (history-answer doctor-memory)))
-    ((3) (if (check-for-keywords user-response) (answer-by-keyword user-response) (hedge)))
-    )
+
+(define strategies_structure
+  (vector-append (vector (lambda (user-response prev-responses) #t)
+                         1
+                         (lambda (user-response prev-responses) (hedge))
+                         )
+                 (vector-append (vector (lambda (user-response prev-responses) #t)
+                                        2
+                                        (lambda (user-response prev-responses) (qualifier-answer user-response))
+                                        )
+                                (vector-append (vector (lambda (user-response prev-responses) (not (vector-empty? prev-responses)))
+                                                       4
+                                                       (lambda (user-response prev-responses) (history-answer prev-responses))
+                                                       )
+                                               (vector-append (vector (lambda (user-response prev-responses) (check-for-keywords user-response))
+                                                                      6
+                                                                      (lambda (user-response prev-responses) (answer-by-keyword user-response))
+                                                                      )
+                                                              #()
+                                                              )
+                                               )
+                                )
+                 )
+  )
+(define (get-strategy-pred strat)
+  (car strat)
   )
 
+(define (get-strategy-weight strat)
+  (cadr strat)
+  )
+
+(define (get-strategy-reply-func strat)
+  (caddr strat)
+  )
+
+(define (reply-ex7 user-response prev-responses all-strats)
+  (define (get-total-strategies-weight strategies) ; суммарный вес всех стратегий
+    (let loop ((sum 0) (i (- (vector-length  strategies) 1)))
+      (if (< i 0)
+          sum
+          (loop (+ sum (get-strategy-weight (vector-ref strategies i))) (- i 1))
+          )
+      )
+    )
+  
+  (define (choose-strategy strategies)
+    (let ((rand_ind (random (get-total-strategies-weight strategies)))) ; рандомный индекс
+      (let loop ((more_weight rand_ind) (i 0))
+        (let* ((strat (vector-ref strategies i)) (weight (get-strategy-weight strat)))
+          (if (< more_weight weight)
+              (get-strategy-reply-func strat)
+              (loop (- more_weight weight) (+ i 1))
+              )
+          )
+        )
+      )
+    )
+  (let* ((good-strategies (vector-filter (lambda (x) ((eval (get-strategy-pred x)) user-response prev-responses)) all-strats)) ; отбираем подходящие стратегии
+         (curr-strat (choose-strategy good-strategies))) ; выбираем стратегию
+    ((eval curr-strat) user-response prev-responses)
+    )
+  )
 ;--------------------------------------------------------------------------------------------------------------------
 ;--------------------------------------------------------------------------------------------------------------------
 ;--------------------------------------------------------------------------------------------------------------------

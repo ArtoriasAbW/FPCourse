@@ -8,10 +8,10 @@
 
 (define (ask-patient-name)
   (begin
-    (println '(next!))
-    (println '(who are you?))
-    (println '**)
-    (car (read))
+    (printf "next!\n")
+    (printf "who are you?\n")
+    (print '**)
+    (car (filter non-empty-string? (string-split (read-line) r_word)))
     )
   )
 
@@ -19,49 +19,49 @@
 ; упражнение 6
 (define keywords_structure '#(
                               ( ; начало данных 1й группы
-                               (depressed suicide exams university) ; список ключевых слов 1й группы
+                               ("depressed" "suicide" "exams" "university") ; список ключевых слов 1й группы
                                ( ; список шаблонов для составления ответных реплик 1й группы 
-                                (when you feel depressed, go out for ice cream)
-                                (depression is a disease that can be treated)
+                                ("when you feel depressed, go out for ice cream")
+                                ("depression is a disease that can be treated")
                                 ;
-                                (you are important)
-                                (what do you think about most often?)
+                                ("you are important")
+                                ("what do you think about most often?")
                                 ()
                                 )
-                               ) ; завершение данных 1й группы
+                               ) ; завершение данных 1й группя
                               ( ; начало данных 2й группы ...
-                               (mother father parents brother sister uncle aunt grandma grandpa)
+                               ("mother" "father" "parents" "brother" "sister" "uncle" "aunt" "grandma" "grandpa")
                                (
-                                (tell me more about your * , i want to know all about your *)
-                                (why do you feel that way about your * ?)
+                                ("tell me more about your "*", i want to know all about your" *)
+                                ("why do you feel that way about your "*"?")
                                 ;
-                                (how old is your * ?)
-                                (why do you feel that way about yuor * ?)
+                                ("how old is your"*"?")
+                                ("why do you feel that way about your"*"?")
                                 )
                                )
                               ( ; группа 3
-                               (university scheme lections motivation)
+                               ("university" "scheme" "lections" "motivation")
                                (
-                                (your education is important)
-                                (how much time do you spend on your studies ?)
+                                ("your education is important")
+                                ("how much time do you spend on your studies?")
                                 ;
-                                (maybe you should change the direction of your studies)
-                                (what is your main problem with * ?)
+                                ("maybe you should change the direction of your studies")
+                                ("what is your main problem with "*" ?")
                                 )
                                )
                               ( ; группа 4
-                               (diet fat weight bulimia anorexia thinness food)
+                               ("diet" "fat" "weight" "bulimia" "anorexia" "thinness" "food")
                                (
-                                (how often do you have problems with eating?)
-                                (does anybody else know about that?)
-                                (you should count the number of calories you eat)
+                                ("how often do you have problems with eating?")
+                                ("does anybody else know about that?")
+                                ("you should count the number of calories you eat")
                                 ))
                               ( ; группа 5
-                               (nightmare sleep loneliness fear terror dread)
+                               ("nightmare" "sleep" "loneliness" "fear" "terror" "dread")
                                (
-                                (how often do you have problems with dreaming?)
-                                (did you have the same problems in your childhood ?)
-                                (is your bed comfortable enough ?))
+                                ("how often do you have problems with dreaming?")
+                                ("did you have the same problems in your childhood ?")
+                                ("is your bed comfortable enough ?"))
                                )))
 
 
@@ -90,16 +90,24 @@
 ; упражнение 6
 ; есть ли в фразе слово, которое есть в списке ключевых
 (define (check-for-keywords phrase)
-  (ormap (lambda (x) (member x all-keywords)) phrase)
+  (ormap (lambda (y) (ormap (lambda (x) (member x all-keywords)) y)) phrase)
   )
 
 
 ; упражнение 6
 (define (answer-by-keyword phrase)
+
   ; список всех ключевых слов, присутствующих во фразе + его длина (lenght <keywords>)
   (define get-all-keywords
-    (foldl (lambda (curr res) (if (member curr all-keywords) (cons (+ 1 (car res)) (cons curr (cdr res))) res))
-           (cons 0 `()) phrase)
+    (foldl (lambda (curr1 res1)
+             (let ((tmp_res (foldl (lambda (curr2 res2) (if (member curr2 all-keywords)
+                                                            (cons (+ 1 (car res2)) (cons curr2 (cdr res2)))
+                                                            res2))
+                                   (cons 0 `())
+                                   curr1)))
+               (cons (+ (car tmp_res) (car res1)) (append (cdr tmp_res) (cdr res1)))))
+           (cons 0 `())
+           phrase)
     )
 
 
@@ -141,30 +149,58 @@
   (let loop ((patients-remain patient-max))
     (if (> patients-remain 0)
         (let ask ((name (ask-patient-name)))
-          (if (equal? name stop-word) `(time to go home)
+          (if (equal? name stop-word) (printf "time to go home\n")
               (begin
                 (printf "Hello, ~a!\n" name)
-                (print '(what seems to be the trouble?))
+                (printf "what seems to be the trouble?\n")
                 (doctor-driver-loop-ex7 name)
                 (loop (- patients-remain 1)))))
-        `(time to go home)
+        (printf "time to go home")
+        
         )
     )
   )
 
+(define sent_end  #px"\\.|\\?|!")
+(define r_word  #px"\\s*\\b\\s*")
+
+(define (read-response response)
+  (map (lambda (x)
+         (filter non-empty-string? (string-split x r_word))
+         )
+       (string-split response sent_end)
+       )
+  )
+
+(define (merge-text lst)
+  (let loop ((tmp_lst lst) (res ""))
+    (if (null? tmp_lst)
+        res
+        (loop (cdr tmp_lst) (string-append (if (or
+                                                (eq? res "")
+                                                (member (car tmp_lst) (list "." "," ";" ":" "-" "?" "!"))
+                                                )
+                                               res
+                                               (string-append res " ")
+                                               ) (car tmp_lst)
+                                                 )
+              )
+        )
+    )
+  )
 
 (define (doctor-driver-loop-ex7 name)
   (let loop ((doctor-memory #()))
     (newline)
     (print '**) ; доктор ждёт ввода реплики пациента, приглашением к которому является **
-    (let ((user-response (read)))
+    (let ((user-response (read-response (read-line))))
       (cond
         ((equal? user-response '(goodbye)) ; реплика '(goodbye) служит для выхода из цикла
          (printf "Goodbye, ~a!\n" name)
          (print '(see you next week))
          (newline))
-        (else (print (reply-ex7 user-response doctor-memory strategies_structure)) ; иначе Доктор генерирует ответ, печатает его и продолжает цикл
-              (loop (vector-append (vector user-response) doctor-memory))
+        (else (printf (merge-text (reply-ex7 user-response doctor-memory strategies_structure))) ; иначе Доктор генерирует ответ, печатает его и продолжает цикл
+              (loop (vector-append (list->vector user-response) doctor-memory))
               )
         )
       )
@@ -175,24 +211,24 @@
 
 (define strategies_structure
   (vector (vector (lambda (user-response prev-responses) #t)
-                         2
-                         (lambda (user-response prev-responses) (hedge))
-                         )
-                 (vector (lambda (user-response prev-responses) #t)
-                                        3
-                                        (lambda (user-response prev-responses) (qualifier-answer user-response))
-                                        )
-                                 (vector (lambda (user-response prev-responses) (not (vector-empty? prev-responses)))
-                                                       5
-                                                       (lambda (user-response prev-responses) (history-answer prev-responses))
-                                                       )
-                                                (vector (lambda (user-response prev-responses) (check-for-keywords user-response))
-                                                                      10
-                                                                      (lambda (user-response prev-responses) (answer-by-keyword user-response))
-                                                                      )
+                  2
+                  (lambda (user-response prev-responses) (hedge))
+                  )
+          (vector (lambda (user-response prev-responses) #t)
+                  3
+                  (lambda (user-response prev-responses) (qualifier-answer user-response))
+                  )
+          (vector (lambda (user-response prev-responses) (not (vector-empty? prev-responses)))
+                  5
+                  (lambda (user-response prev-responses) (history-answer prev-responses))
+                  )
+          (vector (lambda (user-response prev-responses) (check-for-keywords user-response))
+                  10
+                  (lambda (user-response prev-responses) (answer-by-keyword user-response))
+                  )
                                     
-                                                              )
-                                               )
+          )
+  )
 (define (get-strategy-pred strat)
   (vector-ref strat 0)
   )
@@ -235,22 +271,22 @@
 
 ;упражнение 4
 (define (history-answer doctor-memory)
-  (append '(earlier you said that) (change-person (pick-random-vector doctor-memory)))
+  (cons "earlier you said that" (change-person (pick-random-vector doctor-memory)))
   )
 
 			
 ; 1й способ генерации ответной реплики -- замена лица в реплике пользователя и приписывание к результату нового начала
 (define (qualifier-answer user-response)
-  (append (pick-random-vector '#((you seem to think that)
-                                 (you feel that)
-                                 (why do you believe that)
-                                 (why do you say that)
+  (append (pick-random-vector '#(("you seem to think that")
+                                 ("you feel that")
+                                 ("why do you believe that")
+                                 ("why do you say that")
                                  ;упражнение1
-                                 (why do you think that)
-                                 (you said that)
-                                 (do you friends know that))
+                                 ("why do you think that")
+                                 ("you said that")
+                                 ("do you friends know that"))
                               )
-          (change-person user-response)
+          (change-person (list-ref user-response (random (length user-response))))
           )
   )
 
@@ -261,24 +297,24 @@
 
 ; замена лица во фразе			
 (define (change-person phrase)
-  (many-replace-v3 '((am are)
-                     (are am)
-                     (i you)
-                     (me you)
-                     (mine yours)
-                     (my your)
-                     (myself yourself)
-                     (you i)
-                     (your my)
-                     (yours mine)
-                     (yourself myself)
-                     (we you)
-                     (us you)
-                     (our your)
-                     (ours yours)
-                     (ourselves yourselves)
-                     (yourselves ourselves)
-                     (shall will))
+  (many-replace-v3 '(("am" "are")
+                     ("are" "am")
+                     ("i" "you")
+                     ("me" "you")
+                     ("mine" "yours")
+                     ("my" "your")
+                     ("myself" "yourself")
+                     ("you" "i")
+                     ("your" "my")
+                     ("yours" "mine")
+                     ("yourself" "myself")
+                     ("we" "you")
+                     ("us" "you")
+                     ("our" "your")
+                     ("ours" "yours")
+                     ("ourselves" "yourselves")
+                     ("yourselves" "ourselves")
+                     ("shall" "will"))
                    phrase)
   )
   
@@ -291,14 +327,14 @@
 
 ; 2й способ генерации ответной реплики -- случайный выбор одной из заготовленных фраз, не связанных с репликой пользователя
 (define (hedge)
-  (pick-random-vector '#((please go on)
-                         (many people have the same sorts of feelings)
-                         (many of my patients have told me the same thing)
-                         (please continue)
+  (pick-random-vector '#(("please go on")
+                         ("many people have the same sorts of feelings")
+                         ("many of my patients have told me the same thing")
+                         ("please continue")
                          ;упражнение 1
-                         (ahahaha are you serious?)
-                         (*doctor yawns*)
-                         (*doctor looks at the clock*))
+                         ("ahahaha are you serious?")
+                         ("*doctor yawns*")
+                         ("*doctor looks at the clock*"))
                       )
   )
 

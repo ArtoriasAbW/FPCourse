@@ -156,14 +156,14 @@
 
 ; упражнение 6
 (define (answer-by-keyword phrase)
-  ; returns list of all keywords of phrase and its length (lenght <keywords>)
+  ; список всех ключевых слов, присутствующих во фразе + его длина (lenght <keywords>)
   (define get-all-keywords
     (foldl (lambda (curr res) (if (member curr all-keywords) (cons (+ 1 (car res)) (cons curr (cdr res))) res))
            (cons 0 `()) phrase)
     )
 
 
-  ; gets all answers and their number (from possible) (length <answers>)
+  ; список ответов и его длина (length <answers>)
   (define (get-possible-answers-by-keyword keyword)
     (let loop ((result (cons 0 `())) (i (- (vector-length keywords_structure) 1)))
       (cond ((< i 0) result)
@@ -178,7 +178,7 @@
       )
     )
 
-  ; выбор рандомного ответа из возможных
+  ; выбор рандомного ответа из возможных по ключевому слову
   (define (get-answer-by-keyword keyword)
     (pick-random-list (get-possible-answers-by-keyword keyword))
     )
@@ -232,42 +232,37 @@
   )
 
 ; функция предик о применимости стратегии, вес стратегии, тело стратегии (функция)
-; pick-random-with-weight
-
 
 (define strategies_structure
-  (vector-append (vector (lambda (user-response prev-responses) #t)
-                         1
+  (vector (vector (lambda (user-response prev-responses) #t)
+                         2
                          (lambda (user-response prev-responses) (hedge))
                          )
-                 (vector-append (vector (lambda (user-response prev-responses) #t)
-                                        2
+                 (vector (lambda (user-response prev-responses) #t)
+                                        3
                                         (lambda (user-response prev-responses) (qualifier-answer user-response))
                                         )
-                                (vector-append (vector (lambda (user-response prev-responses) (not (vector-empty? prev-responses)))
-                                                       4
+                                 (vector (lambda (user-response prev-responses) (not (vector-empty? prev-responses)))
+                                                       5
                                                        (lambda (user-response prev-responses) (history-answer prev-responses))
                                                        )
-                                               (vector-append (vector (lambda (user-response prev-responses) (check-for-keywords user-response))
-                                                                      6
+                                                (vector (lambda (user-response prev-responses) (check-for-keywords user-response))
+                                                                      10
                                                                       (lambda (user-response prev-responses) (answer-by-keyword user-response))
                                                                       )
-                                                              #()
+                                    
                                                               )
                                                )
-                                )
-                 )
-  )
 (define (get-strategy-pred strat)
-  (car strat)
+  (vector-ref strat 0)
   )
 
 (define (get-strategy-weight strat)
-  (cadr strat)
+  (vector-ref strat 1)
   )
 
 (define (get-strategy-reply-func strat)
-  (caddr strat)
+  (vector-ref strat 2)
   )
 
 (define (reply-ex7 user-response prev-responses all-strats)
@@ -281,7 +276,7 @@
     )
   
   (define (choose-strategy strategies)
-    (let ((rand_ind (random (get-total-strategies-weight strategies)))) ; рандомный индекс
+    (let ((rand_ind (random (get-total-strategies-weight strategies))))
       (let loop ((more_weight rand_ind) (i 0))
         (let* ((strat (vector-ref strategies i)) (weight (get-strategy-weight strat)))
           (if (< more_weight weight)
@@ -292,9 +287,9 @@
         )
       )
     )
-  (let* ((good-strategies (vector-filter (lambda (x) ((eval (get-strategy-pred x)) user-response prev-responses)) all-strats)) ; отбираем подходящие стратегии
+  (let* ((good-strategies (vector-filter (lambda (x) ((get-strategy-pred x) user-response prev-responses)) all-strats)) ; отбираем подходящие стратегии
          (curr-strat (choose-strategy good-strategies))) ; выбираем стратегию
-    ((eval curr-strat) user-response prev-responses)
+    (curr-strat user-response prev-responses)
     )
   )
 ;--------------------------------------------------------------------------------------------------------------------
